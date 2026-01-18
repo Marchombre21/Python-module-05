@@ -35,13 +35,38 @@ class LogError(DataError):
 class DataProcessor(ABC):
     @abstractmethod
     def process(self, data: Any) -> str:
+        """
+        Docstring for process
+
+        :param data: Values to be processed
+        :type data: Any
+        :return: String containing all results after data processing
+        :rtype: str
+        """
         pass
 
     @abstractmethod
     def validate(self, data: Any) -> bool:
+        """
+        Docstring for validate
+
+        :param data: Values to be processed
+        :type data: Any
+        :return: true or false depending on the type of data
+        compared to the expected type
+        :rtype: bool
+        """
         pass
 
     def format_output(self, result: str) -> str:
+        """
+        Docstring for format_output
+
+        :param result: String containing a summary of the process results
+        :type result: str
+        :return: Formated string depending on expected format
+        :rtype: str
+        """
         return f"Processed {result}"
 
 
