@@ -39,8 +39,7 @@ class DataStream(ABC):
 
     def filter_data(self, data_batch: list[Any],
                     criteria: str | None) -> list[Any]:
-        if not criteria:
-            return data_batch
+        return data_batch
 
     def get_stats(self) -> dict[str, str | int | float]:
         return {}
@@ -54,29 +53,35 @@ class SensorStream(DataStream):
 
     def filter_data(self, data_batch: list[Any],
                     criteria: str | None) -> list[tuple]:
-        super().filter_data()
+        clean_datas = []
         for datas in data_batch:
+            is_valid = True
             try:
                 if not isinstance(datas, tuple):
+                    is_valid = False
                     raise SensorError("All sensor datas must be tuples")
                 for data in datas:
+                    is_valid = False
                     if not isinstance(data, float):
                         raise SensorError("All sensor datas must be float")
             except SensorError as e:
                 print(e)
-        if isinstance(criteria, str) and len(criteria) > 1:
+            if is_valid:
+                clean_datas.append(datas)
+        if criteria and isinstance(criteria, str) and len(criteria) > 1:
             try:
                 if criteria[0] == ">":
-                    return [data for data in data_batch if data[0] >
+                    return [data for data in clean_datas if data[0] >
                             float(criteria[1:])]
                 elif criteria[0] == "<":
-                    return [data for data in data_batch if data[0] <
+                    return [data for data in clean_datas if data[0] <
                             float(criteria[1:])]
                 else:
                     raise SensorError("Sensor filter must be in"
                                       " '<sup/inf> <float>' format")
             except (ValueError, DataError) as e:
                 print(e)
+        return super().filter_data(clean_datas, criteria)
 
 
 # class TextProcessor(DataProcessor):
