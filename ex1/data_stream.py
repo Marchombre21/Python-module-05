@@ -15,7 +15,7 @@ from typing import Any
 
 
 class DataError(Exception):
-    def __init__(self, details: str = None):
+    def __init__(self, details: str | None = None):
         message = f"Caught an error: {details}\n"
         super().__init__(message)
 
@@ -77,7 +77,7 @@ class SensorStream(DataStream):
         self.__total_ope = 0
         self.id = id
         self.type = "Environmental Data"
-        self.__errors = []
+        self.__errors: list[list[tuple]] = []
 
     def process_batch(self, data_batch: list[tuple]) -> str:
         total_temp = 0
@@ -99,7 +99,7 @@ class SensorStream(DataStream):
 
     def filter_data(self, data_batch: list[Any],
                     criteria: str | None) -> list[tuple]:
-        clean_datas = []
+        clean_datas: list[tuple] = []
         self.__errors = []
         for datas in data_batch:
             is_valid = True
@@ -134,7 +134,7 @@ class SensorStream(DataStream):
                 print(e)
         return super().filter_data(clean_datas, criteria)
 
-    def get_stats(self) -> dict[str, float]:
+    def get_stats(self) -> dict[str, int | str | float]:
         avg_temp = round(float(self.__total_temp / self.__total_ope), 2)
         avg_hum = round(float(self.__total_humidity / self.__total_ope), 2)
         avg_pre = round(float(self.__total_pressure / self.__total_ope), 2)
@@ -143,7 +143,7 @@ class SensorStream(DataStream):
             "avg_hum": avg_hum,
             "avg_pre": avg_pre,
             "total_operations": self.__total_ope,
-            "errors": self.__errors
+            "errors": len(self.__errors)
         }
 
 
@@ -156,7 +156,7 @@ class TransactionStream(DataStream):
         self.__total_ope = 0
         self.id = id
         self.type = "Financial Data"
-        self.__errors = []
+        self.__errors: list[list[int]] = []
 
     def process_batch(self, data_batch: list[int]) -> str:
         print("\nInitializing Transaction Stream...")
@@ -189,7 +189,7 @@ class TransactionStream(DataStream):
 
     def filter_data(self, data_batch: list[Any],
                     criteria: str | None) -> list[int]:
-        clean_datas = []
+        clean_datas: list[list[int]] = []
         self.__errors = []
         for datas in data_batch:
             is_valid = True
@@ -228,7 +228,7 @@ class TransactionStream(DataStream):
         return super().filter_data([data for datas in clean_datas for data
                                     in datas], criteria)
 
-    def get_stats(self) -> dict[str, int]:
+    def get_stats(self) -> dict[str, int | str | float]:
         avg_sell = round(self.__total_sell / self.__total_sell_value, 2) if\
                    self.__total_sell_value > 0 else 0
         avg_buy = round(self.__total_buy / self.__total_buy_value, 2) if\
@@ -239,7 +239,7 @@ class TransactionStream(DataStream):
             "avg_buy": avg_buy,
             "final_result": final_result,
             "total": self.__total_ope,
-            "errors": self.__errors
+            "errors": len(self.__errors)
         }
 
 
@@ -250,7 +250,7 @@ class EventStream(DataStream):
         self.__total_error = 0
         self.__total_ope = 0
         self.id = id
-        self.__errors = []
+        self.__errors: list[list[str]] = []
 
     def process_batch(self, data_batch: list[str]) -> str:
         print("\nInitializing Event Stream...")
@@ -274,7 +274,7 @@ class EventStream(DataStream):
 
     def filter_data(self, data_batch: list[Any],
                     criteria: str | None) -> list[str]:
-        clean_datas = []
+        clean_datas: list[list[str]] = []
         self.__errors = []
         for datas in data_batch:
             is_valid = True
@@ -307,7 +307,7 @@ class EventStream(DataStream):
         return super().filter_data([data for datas in clean_datas for data
                                     in datas], criteria)
 
-    def get_stats(self) -> dict[str, int]:
+    def get_stats(self) -> dict[str, int | str | float]:
         total_errors = self.__total_error
         total_login = self.__total_login
         total_logout = self.__total_logout
@@ -316,7 +316,7 @@ class EventStream(DataStream):
             "total_login": total_login,
             "total_logout": total_logout,
             "total": self.__total_ope,
-            "errors": self.__errors
+            "errors": len(self.__errors)
         }
 
 
@@ -330,8 +330,8 @@ class StreamProcessor:
     def dispatch_sensors(self, datas_batch: list, criteria_one: str | None,
                          criteria_two: str | None, criteria_three: str | None):
         sensor_list: list[tuple] = []
-        trans_list: list[int] = []
-        event_list: list[str] = []
+        trans_list: list[list[int]] = []
+        event_list: list[list[str]] = []
         self.__batch += 1
         try:
             if not isinstance(datas_batch, list):
@@ -350,8 +350,8 @@ class StreamProcessor:
                                     " nothing else!")
 
             list_lists: list[list] = [sensor_list, trans_list, event_list]
-            criters_list: list[str] = [criteria_one, criteria_two,
-                                       criteria_three]
+            criters_list: list[str | None] = [criteria_one, criteria_two,
+                                              criteria_three]
             streams_lists: list[DataStream] = [self.sensor, self.trans,
                                                self.event]
             for arrays, streams, criter in zip(list_lists, streams_lists,
@@ -389,9 +389,9 @@ class StreamProcessor:
                 height = "large"
             elif criteria_one and criteria_one[0] == ">":
                 height = "little"
-            print(f"Filtered results: {len(dict_sensor['errors'])} critical"
-                  f" sensor alerts, {len(dict_trans['errors'])} {height}"
-                  f" transaction(s) and {len(dict_event['errors'])} event"
+            print(f"Filtered results: {dict_sensor['errors']} critical"
+                  f" sensor alerts, {dict_trans['errors']} {height}"
+                  f" transaction(s) and {dict_event['errors']} event"
                   " alert(s)")
         except DataError as e:
             print(e)
