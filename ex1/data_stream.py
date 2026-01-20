@@ -35,13 +35,37 @@ class EventError(DataError):
 class DataStream(ABC):
     @abstractmethod
     def process_batch(self, data_batch: list[Any]) -> str:
+        """This function process all datas passed in the batch
+
+        Args:
+            data_batch (list[Any]): A list which contain datas of any types.
+
+        Returns:
+            str: Return a string which summarize the results
+        """
         pass
 
     def filter_data(self, data_batch: list[Any],
                     criteria: str | None) -> list[Any]:
+        """check if datas are in the wanted type and
+        filter datas according to criteria passed
+
+        Args:
+            data_batch (list[Any]): A list which contain datas of any types.
+            criteria (str | None): The criteria should be used to filter datas
+
+        Returns:
+            list[Any]: Return a list of the needed type
+        """
         return data_batch
 
     def get_stats(self) -> dict[str, str | int | float]:
+        """Get stats of the instance.
+
+        Returns:
+            dict[str, str | int | float]: Return a dict which contain datas of
+            the object in keys
+        """
         return {}
 
 
@@ -302,6 +326,7 @@ class StreamProcessor:
         self.sensor = SensorStream("SENSOR_001")
         self.trans = TransactionStream("TRANS_001")
         self.event = EventStream("EVENT_001")
+
     def dispatch_sensors(self, datas_batch: list, criteria_one: str | None,
                          criteria_two: str | None, criteria_three: str | None):
         sensor_list: list[tuple] = []
