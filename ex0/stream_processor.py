@@ -74,11 +74,11 @@ class NumericProcessor(DataProcessor):
     def process(self, data: int | list[int] | dict[Any, int]) -> str:
         number: int = 0
         sum_val: int = 0
-        if type(data) is list:
+        if isinstance(data, list):
             for element in data:
                 number += 1
                 sum_val += element
-        elif type(data) is dict:
+        elif isinstance(data, dict):
             for element in data.values():
                 number += 1
                 sum_val += element
@@ -89,19 +89,19 @@ class NumericProcessor(DataProcessor):
                f" avg={(sum_val / number):.2f}"
 
     def validate(self, data: int | list[int] | dict[Any, int]) -> bool:
-        if type(data) is list:
+        if isinstance(data, list):
             if len(data) < 1:
                 raise NumericError("List must have at least one value")
             for element in data:
-                if type(element) is not int:
+                if not isinstance(element, int):
                     raise NumericError("The numeric data must be an int")
-        elif type(data) is dict:
+        elif isinstance(data, dict):
             if len(data) < 1:
                 raise NumericError("Dict must have at least one value")
             for element in data.values():
-                if type(element) is not int:
+                if not isinstance(element, int):
                     raise NumericError("The numeric data must be an int")
-        elif type(data) is not int:
+        elif not isinstance(data, int):
             raise NumericError("The numeric data must be an int")
         return True
 
@@ -110,11 +110,11 @@ class TextProcessor(DataProcessor):
     def process(self, data: str | list[str] | dict[Any, str]) -> str:
         char_nb: int = 0
         word_nb: int = 0
-        if type(data) is list:
+        if isinstance(data, list):
             for element in data:
                 char_nb += len(element)
                 word_nb += len(element.split())
-        elif type(data) is dict:
+        elif isinstance(data, dict):
             for element in data.values():
                 char_nb += len(element)
                 word_nb += len(element.split())
@@ -124,19 +124,19 @@ class TextProcessor(DataProcessor):
         return f"text: {char_nb} character(s), {word_nb} words"
 
     def validate(self, data: str | list[str] | dict[Any, str]) -> bool:
-        if type(data) is list:
+        if isinstance(data, list):
             if len(data) < 1:
                 raise TextError("List must contain at least one string")
             for element in data:
-                if type(element) is not str:
+                if not isinstance(element, str):
                     raise TextError("The text data must be a string")
-        elif type(data) is dict:
+        elif isinstance(data, dict):
             if len(data) < 1:
                 raise TextError("Dict must contain at least one string")
             for element in data.values():
-                if type(element) is not str:
+                if not isinstance(element, str):
                     raise TextError("The text data must be a string")
-        elif type(data) is not str:
+        elif not isinstance(data, str):
             raise TextError("The text data must be a string")
         return True
 
@@ -146,7 +146,7 @@ class LogProcessor(DataProcessor):
         return data
 
     def validate(self, data: str | list[str] | dict[Any, str]) -> bool:
-        if type(data) is not str or ":" not in data:
+        if not isinstance(data, str) or ":" not in data:
             raise LogError("A log data must have"
                            " '<type error>: <error description>' format")
         else:
