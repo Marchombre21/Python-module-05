@@ -11,7 +11,7 @@
 # ****************************************************************************#
 
 from abc import ABC, abstractmethod
-from typing import Any, Protocol, Iterable
+from typing import Any, Protocol
 import json
 import time
 
@@ -38,14 +38,12 @@ class ProcessingStage(Protocol):
     def process(self, data: Any) -> Any:
         ...
 
-    def prove_link(self) -> str:
-        ...
-
 
 class ProcessingPipeline(ABC):
-    def __init__(self, id: str):
+    shared_ways = []
+
+    def __init__(self):
         self.__stages: list[ProcessingStage] = []
-        self.__id = id
 
     @abstractmethod
     def process(self, data: Any) -> Any:
@@ -60,18 +58,17 @@ class ProcessingPipeline(ABC):
     def add_stage(self, stage: ProcessingStage) -> None:
         self.__stages.append(stage)
 
-    def link_pipeline(self) -> str:
-        return self.__id
+    def add_ways(self, stream_id: str):
+        ProcessingPipeline.shared_ways.append(stream_id)
 
     def test_prove(self) -> None:
         """Just a function to prove the stages have the same interface
         """
-        print("Data flow: ", end="")
-        for i, stage in enumerate(self.__stages):
-            print(stage.prove_link(), end="")
-            if i + 1 < len(self.__stages):
+        for i, way in enumerate(ProcessingPipeline.shared_ways):
+            print(way, end="")
+            if i + 1 < len(ProcessingPipeline.shared_ways):
                 print(" -> ", end="")
-        print()
+        print("\nData flow: InputStage -> TransformStage -> OutputStage")
 
 
 class InputStage:
@@ -88,31 +85,16 @@ class InputStage:
         Returns:
             Any: A dictionnary which contain usefull datas for the next stage
         """
-        if isinstance(data, str) and ":" in data:
+        if isinstance(data, str):
             print(f"Input: {data}")
             try:
                 raws = json.loads(data)
                 return raws
             except json.JSONDecodeError:
-                raise JSONError("Error detected in Stage 1: "
-                                "JSON file isn't in the correct format")
-        elif isinstance(data, str) and "," in data:
+                return {"raw_content": data}
+        elif isinstance(data, tuple):
             print(f"Input: {data}")
-            raws = data.split(",")
-            if len(raws) != 3:
-                raise CSVError("Error detected in Stage 1: "
-                               "CSV file must have exactly 3 values.")
-            return {"user": raws[0].strip(), "action": raws[1].strip(),
-                    "number": raws[2].strip()}
-        elif isinstance(data, Iterable):
-            print("Input: Real-time sensor stream")
-            res = {}
-            for i, element in enumerate(data):
-                res[i] = element
-            return res
-
-    def prove_link(self) -> str:
-        return self.__class__.__name__
+            return {"raw_content": data}
 
 
 class TransformStage:
@@ -140,24 +122,19 @@ class TransformStage:
             else:
                 raise JSONError("Error detected in Stage 2: "
                                 "Unknow sensor type")
-        elif data.get("user"):
+        elif data.get("raw_content"):
             print("Transform: Parsed and structured data")
             try:
-                return {"activity": data.get("action"),
-                        "number": data.get("number")}
+                if isinstance(data.get("raw_content"), tuple):
+                    first, second = data.get("raw_content")
+                    return {"temperature": first, "severity": second}
+                words = data.get("raw_content").split(",")
+                return {"temp": words[0].strip(),
+                        "seriousness": words[1].strip(),
+                        "unit": words[2].strip()
+                        }
             except Exception as e:
                 print(f"Error detected in Stage 2: {e}")
-        elif data.get(1):
-            print("Transform: Aggregated and filtered")
-            if isinstance(data.get(1), int):
-                return {"number": len(data),
-                        "avg": round(float(sum(data.values()) / len(data)), 2)}
-            else:
-                raise StreamError("Error detected in Stage 2: "
-                                  "Streams datas must be int (for the moment)")
-
-    def prove_link(self) -> str:
-        return self.__class__.__name__
 
 
 class OutputStage:
@@ -171,52 +148,56 @@ class OutputStage:
             Any: A string to summarize what happened during process
         """
         if data and data.get("value"):
-            return f"Processed temperature reading: {data.get('value')}°C"\
-                   f" ({data.get('result')} range)"
-        elif data and data.get("activity"):
-            return f"User activity logged ({data.get('activity')}):"\
-                   f" {data.get('number')} action(s) processed"
-        elif data and data.get("avg"):
-            return f" Stream summary: {data.get('number')} readings,"\
-                   f" avg: {data.get('avg')}°C"
-
-    def prove_link(self) -> str:
-        return self.__class__.__name__
+            print(f"Output: Processed temperature reading: {data.get('value')}"
+                  f"°C ({data.get('result')} range)")
+            return f"{data.get('value')}°C, {data.get('result')}, C)"
+        elif data and data.get("seriousness"):
+            print(f"Output: Temperature severity: {data.get('seriousness')}")
+            return (data.get("temp"), data.get("seriousness"))
+        elif data and data.get("severity"):
+            return f" Stream summary: {data.get('temperature')},"\
+                   f" severity: {data.get('severity')}"
 
 
 class JSONAdapter(ProcessingPipeline):
     def __init__(self, pipeline_id: str) -> None:
-        super().__init__(pipeline_id)
+        super().__init__()
         self.add_stage(InputStage())
         self.add_stage(TransformStage())
         self.add_stage(OutputStage())
+        self.__id = pipeline_id
 
     def process(self, data: Any) -> str | Any:
         print("\nProcessing JSON data through pipeline...")
+        self.add_ways(self.__id)
         return super().process(data)
 
 
 class CSVAdapter(ProcessingPipeline):
     def __init__(self, pipeline_id: str) -> None:
-        super().__init__(pipeline_id)
+        super().__init__()
         self.add_stage(InputStage())
         self.add_stage(TransformStage())
         self.add_stage(OutputStage())
+        self.__id = pipeline_id
 
     def process(self, data: Any) -> str | Any:
-        print("\nProcessing CSV data through pipeline...")
+        print("\nProcessing CSV data through same pipeline...")
+        self.add_ways(self.__id)
         return super().process(data)
 
 
 class StreamAdapter(ProcessingPipeline):
     def __init__(self, pipeline_id: str) -> None:
-        super().__init__(pipeline_id)
+        super().__init__()
         self.add_stage(InputStage())
         self.add_stage(TransformStage())
         self.add_stage(OutputStage())
+        self.__id = pipeline_id
 
     def process(self, data: Any) -> str | Any:
-        print("\nProcessing Stream data through pipeline...")
+        print("\nProcessing Stream data through same pipeline...")
+        self.add_ways(self.__id)
         return super().process(data)
 
 
@@ -246,26 +227,20 @@ class NexusManager:
             datas (Any): A list of differents datas to be processed
         """
         start_time = time.time()
-        for data in datas:
-            adapter = None
-            if isinstance(data, str) and ":" in data:
-                adapter = self.pipelines[0]
-            elif isinstance(data, str) and "," in data:
-                adapter = self.pipelines[1]
-            elif isinstance(data, Iterable):
-                adapter = self.pipelines[2]
-            if adapter:
-                try:
-                    print("Output:", adapter.process(data))
-                    self.number_record += 1
-                except DataError as e:
-                    print(e)
-                    print("Recovery initiated: Switching to backup processor")
-                    print("Recovery successful: Pipeline restored,"
-                          " processing resumed")
+        res = datas
+        self.number_record += 1
+        for pipeline in self.pipelines:
+            try:
+                res = pipeline.process(res)
+            except DataError as e:
+                print(e)
+                print("Recovery initiated: Switching to backup processor")
+                print("Recovery successful: Pipeline restored,"
+                      " processing resumed")
         end_time = time.time()
+        print(res)
         self.execution_time += round(float(end_time - start_time), 2)
-        self.number_datas += len(datas)
+        self.number_datas += 1
         self.efficiency = int((self.number_record * 100) / self.number_datas)
 
     def prove_chaining(self) -> None:
@@ -273,11 +248,6 @@ class NexusManager:
         share the same interface.
         Then do the same with the stages
         """
-        for i, pipeline in enumerate(self.pipelines):
-            print(pipeline.link_pipeline(), end="")
-            if i + 1 < len(self.pipelines):
-                print(" -> ", end="")
-        print()
         self.pipelines[0].test_prove()
         print(f"\nChain result: {self.number_record} records processed"
               " through 3-stage pipeline")
@@ -287,21 +257,11 @@ class NexusManager:
 
 def main():
     print("=== CODE NEXUS - ENTERPRISE PIPELINE SYSTEM ===\n")
-    datas: list[Any] = [
-        '{"sensor": "temp", "value": 23.5, "unit": "C"}',
-        "Bruno, login, 4",
-        [5, 6, 7, 1, 4, 9],
-        "Cedric, error, 1",
-        '{"sensor": "pastemp", "value": 30.2, "unit": "C"}',
-        [36, 78, 4, 56, 9, 10],
-        '{"sensor": "temp", "value": 32.4, "unit": "C"}',
-        [7, 85, 52, 4, 64, 25]
-    ]
     print("Initializing Nexus Manager...")
     print("Pipeline capacity: 1000 streams/second\n")
     nexus = NexusManager()
     print("\n=== Multi-Format Data Processing ===")
-    nexus.process_data(datas)
+    nexus.process_data('{"sensor": "temp", "value": 23.5, "unit": "C"}')
     print("\n=== Pipeline Chaining Demo ===")
     nexus.prove_chaining()
     print("\nNexus Integration complete. All systems operational.")
