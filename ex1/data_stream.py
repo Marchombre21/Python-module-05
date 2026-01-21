@@ -70,7 +70,7 @@ class DataStream(ABC):
 
 
 class SensorStream(DataStream):
-    def __init__(self, id: str):
+    def __init__(self, id: str) -> None:
         self.__total_temp = 0
         self.__total_humidity = 0
         self.__total_pressure = 0
@@ -148,7 +148,7 @@ class SensorStream(DataStream):
 
 
 class TransactionStream(DataStream):
-    def __init__(self, id: str):
+    def __init__(self, id: str) -> None:
         self.__total_sell_value = 0
         self.__total_sell = 0
         self.__total_buy_value = 0
@@ -244,7 +244,7 @@ class TransactionStream(DataStream):
 
 
 class EventStream(DataStream):
-    def __init__(self, id: str):
+    def __init__(self, id: str) -> None:
         self.__total_login = 0
         self.__total_logout = 0
         self.__total_error = 0
@@ -321,14 +321,15 @@ class EventStream(DataStream):
 
 
 class StreamProcessor:
-    def __init__(self):
+    def __init__(self) -> None:
         self.__batch = 0
         self.sensor = SensorStream("SENSOR_001")
         self.trans = TransactionStream("TRANS_001")
         self.event = EventStream("EVENT_001")
 
     def dispatch_sensors(self, datas_batch: list, criteria_one: str | None,
-                         criteria_two: str | None, criteria_three: str | None):
+                         criteria_two: str | None, criteria_three: str | None)\
+            -> None:
         sensor_list: list[tuple] = []
         trans_list: list[list[int]] = []
         event_list: list[list[str]] = []

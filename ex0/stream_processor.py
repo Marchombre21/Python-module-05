@@ -15,7 +15,7 @@ from typing import Any
 
 
 class DataError(Exception):
-    def __init__(self, details: str = None):
+    def __init__(self, details: str | None = None):
         message = f"Caught an error: {details}\n"
         super().__init__(message)
 
@@ -123,7 +123,7 @@ class TextProcessor(DataProcessor):
             word_nb = len(data.split(" "))
         return f"text: {char_nb} character(s), {word_nb} words"
 
-    def validate(self, data:  str | list[str] | dict[Any, str]) -> bool:
+    def validate(self, data: str | list[str] | dict[Any, str]) -> bool:
         if type(data) is list:
             if len(data) < 1:
                 raise TextError("List must contain at least one string")
@@ -145,7 +145,7 @@ class LogProcessor(DataProcessor):
     def process(self, data: str) -> str:
         return data
 
-    def validate(self, data: str) -> bool:
+    def validate(self, data: str | list[str] | dict[Any, str]) -> bool:
         if type(data) is not str or ":" not in data:
             raise LogError("A log data must have"
                            " '<type error>: <error description>' format")
