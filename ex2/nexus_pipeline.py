@@ -62,7 +62,7 @@ class ProcessingPipeline(ABC):
         ProcessingPipeline.shared_ways.append(stream_id)
 
     def test_prove(self) -> None:
-        """Just a function to prove the stages have the same interface
+        """Just a function to prove the stages are chained together
         """
         for i, way in enumerate(ProcessingPipeline.shared_ways):
             print(way, end="")
@@ -80,7 +80,7 @@ class InputStage:
 
         Raises:
             JSONError: Raise an error about json format
-            CSVError: Raise an error about CSV file content
+            DataError: Raise an error about type's file
 
         Returns:
             Any: A dictionnary which contain usefull datas for the next stage
@@ -95,23 +95,25 @@ class InputStage:
         elif isinstance(data, tuple):
             print(f"Input: {data}")
             return {"raw_content": data}
+        else:
+            raise DataError("InputStage must receive only strings or tuples")
 
 
 class TransformStage:
     def process(self, data: Any) -> Any:
-        """Check which type of datas it's and adapts behavior.
+        """Check which dictionnary it's and adapts behavior.
 
         Args:
             data (Any): Data to be treated
 
         Raises:
             JSONError: Raise an error about json dict content
-            StreamError: Raise an error about stream dict content
+            DataError: Raise an error about dict content
 
         Returns:
             Any: A dictionnary which contain usefull datas for the next stage
         """
-        if data.get("sensor"):
+        if isinstance(data, dict) and data.get("sensor"):
             print("Transform: Enriched with metadata and validation")
             if data.get("sensor") == "temp":
                 temp = int(data.get("value"))
@@ -122,7 +124,7 @@ class TransformStage:
             else:
                 raise JSONError("Error detected in Stage 2: "
                                 "Unknow sensor type")
-        elif data.get("raw_content"):
+        elif isinstance(data, dict) and data.get("raw_content"):
             print("Transform: Parsed and structured data")
             try:
                 if isinstance(data.get("raw_content"), tuple):
@@ -134,7 +136,10 @@ class TransformStage:
                         "unit": words[2].strip()
                         }
             except Exception as e:
-                print(f"Error detected in Stage 2: {e}")
+                raise DataError(f"Error detected in Stage 2: {e}")
+        else:
+            raise DataError("Error detected in Stage 2: "
+                            "TransformStage must receive only dictionnaries")
 
 
 class OutputStage:
@@ -147,16 +152,18 @@ class OutputStage:
         Returns:
             Any: A string to summarize what happened during process
         """
-        if data and data.get("value"):
+        if data and isinstance(data, dict) and data.get("value"):
             print(f"Output: Processed temperature reading: {data.get('value')}"
                   f"°C ({data.get('result')} range)")
             return f"{data.get('value')}°C, {data.get('result')}, C)"
-        elif data and data.get("seriousness"):
+        elif data and isinstance(data, dict) and data.get("seriousness"):
             print(f"Output: Temperature severity: {data.get('seriousness')}")
             return (data.get("temp"), data.get("seriousness"))
-        elif data and data.get("severity"):
-            return f" Stream summary: {data.get('temperature')},"\
+        elif data and isinstance(data, dict) and data.get("severity"):
+            return f"Output: Stream summary: {data.get('temperature')},"\
                    f" severity: {data.get('severity')}"
+        else:
+            raise DataError("OutputStage must receive a dict")
 
 
 class JSONAdapter(ProcessingPipeline):
@@ -208,6 +215,7 @@ class NexusManager:
         self.number_record: int = 0
         self.execution_time: float = 0
         self.number_datas: int = 0
+        self.error: int = 0
         self.efficiency: int = 0
         print("Creating Data Processing Pipeline...")
         print("Stage 1: Input validation and parsing")
@@ -233,6 +241,7 @@ class NexusManager:
             try:
                 res = pipeline.process(res)
             except DataError as e:
+                self.error = 1
                 print(e)
                 print("Recovery initiated: Switching to backup processor")
                 print("Recovery successful: Pipeline restored,"
@@ -240,8 +249,9 @@ class NexusManager:
         end_time = time.time()
         print(res)
         self.execution_time += round(float(end_time - start_time), 2)
-        self.number_datas += 1
-        self.efficiency = int((self.number_record * 100) / self.number_datas)
+        self.number_datas = self.number_record - self.error
+        self.efficiency = int((self.number_record * 100) / self.number_datas)\
+            if self.number_datas > 0 else 0
 
     def prove_chaining(self) -> None:
         """Call the same function in all adapters in a loop to prove that they
